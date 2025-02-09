@@ -7,8 +7,8 @@
 1. **Clone o repositório:**
 
    ```bash
-   git clone <URL_DO_REPOSITÓRIO>
-   cd <NOME_DO_DIRETÓRIO>
+   git clone https://github.com/rangeldarosa/Nifflers_key_chall.git
+   cd https://github.com/rangeldarosa/Nifflers_key_chall.git
    ```
 
 2. **Instale as dependências:**
