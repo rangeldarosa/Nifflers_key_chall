@@ -56,10 +56,10 @@ def _create_mock_users(db_filename):
     row = c.fetchone()
     if row["count"] == 0:
         mock_users = [
-            ("demo", "[SUA_FLAG_ESTARA_AQUI]"),
-            ("usuario_mock1", "Informação de teste 1"),
-            ("usuario_mock2", "Informação de teste 2"),
-            ("usuario_mock3", "Informação de teste 3")
+            ("demo", "flag{SqlI_is_fun_" + db_filename[9:-3] + "}"),
+            ("mock_user1", "Test information 1"),
+            ("mock_user2", "Test information 2"),
+            ("mock_user3", "Test information 3")
         ]
         for user in mock_users:
             c.execute("INSERT INTO users (username, info) VALUES (?, ?)", user)
@@ -84,10 +84,10 @@ async def auth_middleware(request: Request, call_next):
     if request.method != "GET":
         auth_header = request.headers.get("Authorization")
         if not auth_header:
-            return JSONResponse(status_code=401, content={"detail": "Token de autenticação não fornecido"})
+            return JSONResponse(status_code=401, content={"detail": "Authentication token not provided"})
         token_parts = auth_header.split()
         if len(token_parts) != 2 or token_parts[0] != "Bearer" or token_parts[1] != "dashheitchforthewin":
-            return JSONResponse(status_code=401, content={"detail": "Token de autenticação inválido"})
+            return JSONResponse(status_code=401, content={"detail": "Invalid authentication token"})
     response = await call_next(request)
     return response
 
@@ -99,16 +99,16 @@ def vulnerable(token: str, request: Request):
     c.execute("SELECT encryption_key FROM keys WHERE id = 1 LIMIT 1")
     key_row = c.fetchone()
     if not key_row:
-        raise HTTPException(status_code=500, detail="Chave de criptografia não encontrada")
+        raise HTTPException(status_code=500, detail="Encryption key not found")
     encryption_key = key_row["encryption_key"]
     conn.close()
     cipher = TokenCipher(encryption_key)
     try:
         decrypted = cipher.decrypt(token)
     except Exception as e:
-        raise HTTPException(status_code=400, detail="Falha na descriptografia do token: " + str(e))
+        raise HTTPException(status_code=400, detail="Token decryption failed: " + str(e))
     if decrypted is None:
-        raise HTTPException(status_code=400, detail="Falha na recuperação do conteúdo do token")
+        raise HTTPException(status_code=400, detail="Failed to retrieve token content")
     if isinstance(decrypted, str):
         decrypted = json.loads(decrypted)
     conn = get_db_connection(ip)
@@ -120,9 +120,9 @@ def vulnerable(token: str, request: Request):
         if user:
             return {"user": ""}
         else:
-            raise HTTPException(status_code=400, detail="Usuário não encontrado")
+            raise HTTPException(status_code=400, detail="User not found")
     except Exception as e:
-        raise HTTPException(status_code=500, detail="Erro na consulta SQL: " + str(e))
+        raise HTTPException(status_code=500, detail="SQL query error: " + str(e))
 
 class ValidateRequest(BaseModel):
     payload: str
@@ -136,18 +136,18 @@ def validate_token(validate_req: ValidateRequest, request: Request):
     key_row = c.fetchone()
     if not key_row:
         conn.close()
-        raise HTTPException(status_code=500, detail="Chave de criptografia não encontrada")
+        raise HTTPException(status_code=500, detail="Encryption key not found")
     encryption_key = key_row["encryption_key"]
     conn.close()
     cipher = TokenCipher(encryption_key)
     try:
         content = cipher.decrypt(validate_req.payload)
         if content["payload"] == "a_forca_bruta_faz_e_bruta_mesmo":
-            return {"valid": True, "detail": "Token é válido"}
+            return {"valid": True, "detail": "Token is valid"}
         else:
-            raise HTTPException(status_code=500, detail="Token inválido")
+            raise HTTPException(status_code=500, detail="Invalid token")
     except Exception as e:
-        raise HTTPException(status_code=500, detail="Token inválido: " + str(e))
+        raise HTTPException(status_code=500, detail="Invalid token: " + str(e))
 
 @app.get("/list-keys")
 def listar_chaves(request: Request):
@@ -167,7 +167,7 @@ class KeyRequest(BaseModel):
 def adicionar_chave(key_req: KeyRequest, request: Request):
     ip = request.client.host
     if not set(key_req.key).issubset("0123456789abcdef") or len(key_req.key) != 64:
-        raise HTTPException(status_code=400, detail="Formato ou tamanho da chave inválido")
+        raise HTTPException(status_code=400, detail="Invalid key format or length")
     conn = get_db_connection(ip)
     c = conn.cursor()
     try:
@@ -176,9 +176,9 @@ def adicionar_chave(key_req: KeyRequest, request: Request):
         key_id = c.lastrowid
     except Exception as e:
         conn.close()
-        raise HTTPException(status_code=500, detail="Erro ao inserir chave: " + str(e))
+        raise HTTPException(status_code=500, detail="Error inserting key: " + str(e))
     conn.close()
-    return {"detail": "Chave inserida com sucesso", "id": key_id}
+    return {"detail": "Key successfully inserted", "id": key_id}
 
 @app.post("/reset")
 def reset_database(request: Request):
@@ -188,4 +188,4 @@ def reset_database(request: Request):
     c.execute("DELETE FROM keys WHERE id != 1")
     conn.commit()
     conn.close()
-    return {"detail": "Banco de dados resetado com sucesso"}
+    return {"detail": "Database successfully reset"}
